@@ -162,5 +162,5 @@ export const addpost = async (req, res) => {
 
   const { name, description, price, stock } = value;
 
-  //   const user = await pool
+  const user = await pool("SELECT *FROM ");
 };
