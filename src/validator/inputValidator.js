@@ -1,3 +1,4 @@
+import { json } from "express";
 import joi from "joi";
 
 export const userInputValidation = joi.object({
@@ -35,3 +36,7 @@ export const addPostValidation = joi.object({
   price: joi.number().required().min(1),
   stock: joi.number().required().min(0),
 });
+
+export const emailValidatorForMiddleware = async (req, res) => {
+  email: joi.string().email().required();
+};
