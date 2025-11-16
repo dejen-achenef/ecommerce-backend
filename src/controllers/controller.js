@@ -6,7 +6,7 @@ import {
   UpdatePostValidation,
 } from "../validator/inputValidator.js";
 import bcrypt from "bcrypt";
-
+import { validate as validateUUID } from "uuid";
 export const CreateUser = async (req, res) => {
   // const { error, value } = userInputValidation.validate(req.body);
 
@@ -222,5 +222,149 @@ export const UpdatePost = async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: "Server error", errors: [err.message] });
+  }
+};
+
+export const getAllUser = async (req, res) => {
+  let page = parseInt(req.query.page) || 1;
+  let limit = parseInt(req.query.limit) || 10;
+
+  const offset = (page - 1) * limit;
+  try {
+    const products = await pool.query(
+      "SELECT * FROM products LIMIT $1 OFFSET $2 ",
+      [limit, offset]
+    );
+    console.log(products);
+    if (!products) {
+      return res
+        .status(400)
+        .json({ success: false, message: "products are not reachable" });
+    }
+
+    const Totalitems = await pool.query("SELECT COUNT(*) FROM products");
+    const totalitemscount = Totalitems.rows[0].count;
+    const totalPages = totalitemscount / limit;
+    console.log(Totalitems.rows);
+    return res.status(200).json({
+      success: true,
+      message: "Products returned",
+      page,
+      limit,
+      totalitemscount,
+
+      totalPages,
+      data: products.rows,
+    });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", errors: [err.message] });
+  }
+};
+
+export const searchUser = async (req, res) => {
+  let limit = 10;
+  let page = 1;
+  const offset = (page - 1) * limit;
+
+  try {
+    const search = req.query.search;
+
+    const products = search
+      ? await pool.query("SELECT * FROM products WHERE name ILIKE $1", [
+          `%${search}%`,
+        ])
+      : await pool.query("SELECT * FROM products LIMIT $1 OFFSET $2 ", [
+          limit,
+          offset,
+        ]);
+
+    console.log("rjidhgudfj ", products);
+    if (!products) {
+      return res
+        .status(400)
+        .json({ success: false, message: "products are not reachable" });
+    }
+
+    const Totalitems = await pool.query("SELECT COUNT(*) FROM products");
+    const totalitemscount = Totalitems.rows[0].count;
+
+    return res.status(200).json({
+      success: true,
+      message: "Products returned",
+
+      totalitemscount,
+
+      data: products.rows,
+    });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", errors: [err.message] });
+  }
+};
+
+export const getPostIndividually = async (req, res) => {
+  let page = parseInt(req.query.page) || 1;
+  let limit = parseInt(req.query.limit) || 10;
+  let id = req.params.id;
+
+  const offset = (page - 1) * limit;
+  try {
+    const products = await pool.query(
+      "SELECT * FROM products WHERE id=$1 LIMIT $2 OFFSET $3",
+      [id, limit, offset]
+    );
+    console.log(products);
+    if (products.rows.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "products not found" });
+    }
+
+    const Totalitems = await pool.query("SELECT COUNT(*) FROM products");
+    const totalitemscount = Totalitems.rows[0].count;
+    const totalPages = totalitemscount / limit;
+    console.log(Totalitems.rows);
+    return res.status(200).json({
+      success: true,
+      message: "Products returned",
+      page,
+      limit,
+      totalitemscount,
+
+      totalPages,
+      data: products.rows,
+    });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", errors: [err.message] });
+  }
+};
+export const DeleteProduct = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query("DELETE FROM products WHERE id = $1", [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Deleted successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      errors: [error.message],
+    });
   }
 };
