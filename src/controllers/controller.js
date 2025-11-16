@@ -3,6 +3,7 @@ import {
   userInputValidation,
   LoginValidation,
   addPostValidation,
+  UpdatePostValidation,
 } from "../validator/inputValidator.js";
 import bcrypt from "bcrypt";
 
@@ -18,7 +19,7 @@ export const CreateUser = async (req, res) => {
     });
   }
 
-  const { name, email, password } = value;
+  const { name, email, password, role } = value;
 
   try {
     // Check if user already exists
@@ -41,8 +42,8 @@ export const CreateUser = async (req, res) => {
 
     // Insert new user
     const result = await pool.query(
-      "INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *",
-      [name, email, hashedPassword]
+      "INSERT INTO users (name, email, password,role) VALUES ($1, $2, $3,$4) RETURNING *",
+      [name, email, hashedPassword, role]
     );
 
     if (result.rows.length === 0) {
@@ -153,14 +154,87 @@ export const addpost = async (req, res) => {
 
   if (error) {
     return res.status(400).json({
-      success: true,
-      message: "please put the correct value",
+      success: false,
+      message: "Please put the correct value",
       object: null,
-      errors: null,
+      errors: error.details.map((d) => d.message),
     });
   }
 
   const { name, description, price, stock } = value;
 
-  const user = pool("SELECT *FROM ");
+  try {
+    const result = await pool.query(
+      "INSERT INTO products (name, description, price, stock,user_id) VALUES ($1, $2, $3, $4,$5) RETURNING *",
+      [name, description, price, stock, req.user.id]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Product created successfully",
+      object: result.rows[0],
+      errors: null,
+    });
+  } catch (err) {
+    console.error("AddPost error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      object: null,
+      errors: [err.message],
+    });
+  }
+};
+export const UpdatePost = async (req, res) => {
+  const { error, value } = UpdatePostValidation.validate(req.body);
+
+  if (error) {
+    return res.status(400).json({
+      success: false,
+      message: "Please put the correct value",
+      object: null,
+      errors: error.details.map((d) => d.message),
+    });
+  }
+
+  const { name, description, price, stock } = value;
+  const { id } = req.params; // assuming you send product id as a route param
+
+  try {
+    const result = await pool.query(
+      `UPDATE products
+       SET name = $1,
+           description = $2,
+           price = $3,
+           stock = $4,
+           user_id = $5
+       WHERE id = $6
+       RETURNING *`,
+      [name, description, price, stock, req.user.id, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+        object: null,
+        errors: ["No product with that id"],
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Product updated successfully",
+      object: result.rows[0],
+      errors: null,
+    });
+  } catch (err) {
+    console.error("UpdatePost error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      object: null,
+      errors: [err.message],
+    });
+  }
 };

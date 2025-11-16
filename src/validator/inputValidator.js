@@ -1,8 +1,10 @@
 import { json } from "express";
+import Joi from "joi";
 import joi from "joi";
 
 export const userInputValidation = joi.object({
   email: joi.string().email().required(),
+  role: joi.string().required(),
   name: joi.string().min(2).max(50).required(),
   password: joi
     .string()
@@ -30,13 +32,23 @@ export const LoginValidation = joi.object({
     }),
 });
 
-export const addPostValidation = joi.object({
-  name: joi.string().email().min(2).max(100).required(),
-  description: joi.string().min(10).required(),
-  price: joi.number().required().min(1),
-  stock: joi.number().required().min(0),
-});
+export const addPostValidation = joi
+  .object({
+    name: joi.string().min(2).max(100).required(),
+    description: joi.string().min(10).required(),
+    price: joi.number().required().min(1),
+    stock: joi.number().required().min(0),
+  })
+  .unknown(true);
+export const UpdatePostValidation = joi
+  .object({
+    name: joi.string().min(2).max(100),
+    description: joi.string().min(10),
+    price: joi.number().min(1),
+    stock: joi.number().min(0),
+  })
+  .unknown(true);
 
-export const emailValidatorForMiddleware = async (req, res) => {
-  email: joi.string().email().required();
-};
+export const emailValidatorForMiddleware = Joi.object({
+  email: Joi.string().email().required(),
+});

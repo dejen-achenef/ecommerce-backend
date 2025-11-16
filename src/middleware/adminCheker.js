@@ -1,17 +1,18 @@
-import pool from "../../db";
-import { emailValidatorForMiddleware } from "../validator/inputValidator";
-
+import pool from "../../db.js";
+import { emailValidatorForMiddleware } from "../validator/inputValidator.js";
 export const AdminChecker = async (req, res, next) => {
-  const { error, value } = emailValidatorForMiddleware(req.body);
+  // validate req.body
+  const { error, value } = emailValidatorForMiddleware.validate({
+    email: req.body.email,
+  });
 
   if (error) {
-    return res.status(401).json({ message: "Put valid email" });
+    return res.status(401).json({ message: error });
   }
 
   const { email } = value;
 
   try {
-    // MUST await query
     const userResult = await pool.query("SELECT * FROM users WHERE email=$1", [
       email,
     ]);
@@ -22,12 +23,10 @@ export const AdminChecker = async (req, res, next) => {
 
     const user = userResult.rows[0];
 
-    // Fix role checking
     if (user.role !== "admin") {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    // Attach user to request
     req.user = user;
 
     next();
