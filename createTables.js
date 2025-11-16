@@ -15,7 +15,6 @@ const createTables = async () => {
         role TEXT NOT NULL
       );
     `);
-
     // Products table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS products (

@@ -8,18 +8,18 @@ import {
 import bcrypt from "bcrypt";
 
 export const CreateUser = async (req, res) => {
-  const { error, value } = userInputValidation.validate(req.body);
+  // const { error, value } = userInputValidation.validate(req.body);
 
-  if (error) {
-    return res.status(400).json({
-      success: false,
-      message: "Validation failed",
-      object: null,
-      errors: error.details.map((d) => d.message),
-    });
-  }
+  // if (error) {
+  //   return res.status(400).json({
+  //     success: false,
+  //     message: "Validation failed",
+  //     object: null,
+  //     errors: error.details.map((d) => d.message),
+  //   });
+  // }
 
-  const { name, email, password, role } = value;
+  const { name, email, password, role } = req.body;
 
   try {
     // Check if user already exists
@@ -186,55 +186,41 @@ export const addpost = async (req, res) => {
   }
 };
 export const UpdatePost = async (req, res) => {
-  const { error, value } = UpdatePostValidation.validate(req.body);
-
-  if (error) {
-    return res.status(400).json({
-      success: false,
-      message: "Please put the correct value",
-      object: null,
-      errors: error.details.map((d) => d.message),
-    });
-  }
-
-  const { name, description, price, stock } = value;
-  const { id } = req.params; // assuming you send product id as a route param
+  const { id } = req.params; // product id from URL
+  const { name, description, price, stock } = req.body; // fields from client
 
   try {
+    // Only update the fields that exist
     const result = await pool.query(
-      `UPDATE products
-       SET name = $1,
-           description = $2,
-           price = $3,
-           stock = $4,
-           user_id = $5
-       WHERE id = $6
-       RETURNING *`,
+      `
+      UPDATE products
+      SET
+        name = COALESCE($1, name),
+        description = COALESCE($2, description),
+        price = COALESCE($3, price),
+        stock = COALESCE($4, stock),
+        user_id = $5
+      WHERE id = $6
+      RETURNING *
+      `,
       [name, description, price, stock, req.user.id, id]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-        object: null,
-        errors: ["No product with that id"],
-      });
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
     }
 
     return res.status(200).json({
       success: true,
       message: "Product updated successfully",
       object: result.rows[0],
-      errors: null,
     });
   } catch (err) {
-    console.error("UpdatePost error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      object: null,
-      errors: [err.message],
-    });
+    console.error(err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", errors: [err.message] });
   }
 };
