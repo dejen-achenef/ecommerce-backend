@@ -1,9 +1,11 @@
 import pool from "../../db.js";
+import jwt from "jsonwebtoken";
 import {
   userInputValidation,
   LoginValidation,
   addPostValidation,
   UpdatePostValidation,
+  PlaceOrderValidation,
 } from "../validator/inputValidator.js";
 import bcrypt from "bcrypt";
 import { validate as validateUUID } from "uuid";
@@ -84,7 +86,6 @@ export const CreateUser = async (req, res) => {
     });
   }
 };
-
 export const LoginUser = async (req, res) => {
   try {
     const { error, value } = LoginValidation.validate(req.body);
@@ -100,7 +101,7 @@ export const LoginUser = async (req, res) => {
 
     const { name, email, password } = value;
 
-    // Find user
+    // Find user by email or username
     const gettinguser = await pool.query(
       "SELECT * FROM users WHERE email = $1 OR name = $2",
       [email, name]
@@ -117,7 +118,7 @@ export const LoginUser = async (req, res) => {
 
     const user = gettinguser.rows[0];
 
-    // Compare password
+    // Compare password FIRST
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
@@ -129,13 +130,47 @@ export const LoginUser = async (req, res) => {
       });
     }
 
-    // Remove password before sending
+    // Now generate tokens
+    const accesstoken = jwt.sign(
+      { id: user.id, role: user.role },
+      process.env.accesskey,
+      {
+        expiresIn: "1h",
+      }
+    );
+
+    const refreshtoken = jwt.sign(
+      { id: user.id, role: user.role },
+      process.env.refreshkey,
+      {
+        expiresIn: "1d",
+      }
+    );
+
+    // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
-    return res.json({
+    // Set cookies (HTTP-only)
+    res.cookie("accesstoken", accesstoken, {
+      httpOnly: true,
+      secure: false, // change to true when using HTTPS
+      sameSite: "lax",
+      maxAge: 3600000, // 1 hour
+    });
+
+    res.cookie("refresh_token", refreshtoken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
       success: true,
       message: "User signed in successfully",
       object: userWithoutPassword,
+      token: token,
+      refreshToken: refreshtoken,
       errors: null,
     });
   } catch (err) {
@@ -149,6 +184,7 @@ export const LoginUser = async (req, res) => {
     });
   }
 };
+
 export const addpost = async (req, res) => {
   const { error, value } = addPostValidation.validate(req.body);
 
@@ -366,5 +402,38 @@ export const DeleteProduct = async (req, res) => {
       message: "Server error",
       errors: [error.message],
     });
+  }
+};
+
+export const PlaseOrder = async (req, res) => {
+  const { error, value } = PlaceOrderValidation.validate(req.body);
+  if (error) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      object: null,
+      errors: error.details.map((d) => d.message),
+    });
+
+    const { productitems } = req.body;
+
+    for (let item in productitems) {
+      const { productid, quantity } = item;
+    }
+    try {
+      const orderplace = pool.query(
+        "INSERT INTO order_products (product_id,quantity) VALUES ($1,$2) RETURNING *",
+        [productid, quantity]
+      );
+      res.status(201).json({
+        success: true,
+        message: "Order Successfully Created",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "unExpected error happened",
+      });
+    }
   }
 };

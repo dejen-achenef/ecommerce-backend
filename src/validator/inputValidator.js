@@ -52,3 +52,12 @@ export const UpdatePostValidation = joi
 export const emailValidatorForMiddleware = Joi.object({
   email: Joi.string().email().required(),
 });
+
+export const PlaceOrderValidation = Joi.array()
+  .items(
+    Joi.object({
+      productid: Joi.string().required(),
+      quantity: Joi.number().min(1),
+    }).unknown(true)
+  )
+  .min(1);

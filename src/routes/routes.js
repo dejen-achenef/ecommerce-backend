@@ -7,6 +7,7 @@ import {
   getPostIndividually,
   //   DeleteUser,
   LoginUser,
+  PlaseOrder,
   searchUser,
   UpdatePost,
   //   LogoutUser,
@@ -24,6 +25,7 @@ const router = express.Router();
 router.post("/auth/register", checkschemas(userInputValidation), CreateUser);
 router.post("/auth/login", LoginUser);
 router.post("/add/post", AdminChecker, addpost);
+router.post("/add/order", PlaseOrder);
 router.get("/get/posts", getAllUser);
 router.get("/get/posts/search", searchUser);
 router.delete("/post/delete/:id", AdminChecker, checkUserByid, DeleteProduct);
