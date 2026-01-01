@@ -247,7 +247,7 @@ export const UpdatePost = async (req, res) => {
 /**
  * Delete product
  */
-export const DeleteProd= async (req, res) => {
+export const DeleteProduct= async (req, res) => {
   const { id } = req.params;
 
   try {
