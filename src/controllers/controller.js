@@ -274,7 +274,7 @@ export const DeleteProduct = async (req, res) => {
 };
 
 /**
- * Place an order
+ * Place an order so that stock can be reduced accordingly
  */
 export const PlaceOrder = async (req, res) => {
   const { error, value: orderItems } = PlaceOrderValidation.validate(req.body);
@@ -293,7 +293,7 @@ export const PlaceOrder = async (req, res) => {
 
     let totalPrice = 0;
 
-    // Validate stock and calculate total
+    // Validate stock and calculate total so the transaction can be rolled back if needed
     for (const { productId, quantity } of orderItems) {
       const productResult = await client.query(
         "SELECT price, stock, name FROM products WHERE id = $1",
