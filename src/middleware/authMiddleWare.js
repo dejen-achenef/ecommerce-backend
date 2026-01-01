@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 export const tokenChecker = async (req, res, next) => {
   try {
     const accessToken = req.cookies.accesstoken;
-    const refreshToken = req.cookies.refreshkey;
+    const refreshToken = req.cookies.refreshtoken;
 
     // ---------------------------------------------
     // 1. If access token exists → verify it
@@ -61,6 +61,7 @@ export const tokenChecker = async (req, res, next) => {
     return res.status(500).json({
       success: false,
       message: "Server error in tokenChecker",
+      error: error.message,
     });
   }
 };

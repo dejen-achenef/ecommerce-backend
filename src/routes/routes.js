@@ -7,9 +7,10 @@ import {
   getPostIndividually,
   //   DeleteUser,
   LoginUser,
-  PlaseOrder,
   searchUser,
+  PlaceOrder,
   UpdatePost,
+  getMyOrders,
   //   LogoutUser,
   //   UpdateUser,
 } from "../controllers/controller.js";
@@ -19,13 +20,15 @@ import Joi from "joi";
 import { userInputValidation } from "../validator/inputValidator.js";
 import { checkschemas } from "../middleware/shcemasvalidator.js";
 import { checkUserByid } from "../middleware/getCheker.js";
+import { tokenChecker } from "../middleware/authMiddleWare.js";
 
 const router = express.Router();
 
 router.post("/auth/register", checkschemas(userInputValidation), CreateUser);
 router.post("/auth/login", LoginUser);
 router.post("/add/post", AdminChecker, addpost);
-router.post("/add/order", PlaseOrder);
+router.post("/add/order", tokenChecker, PlaceOrder);
+router.post("/get/order", tokenChecker, getMyOrders);
 router.get("/get/posts", getAllUser);
 router.get("/get/posts/search", searchUser);
 router.delete("/post/delete/:id", AdminChecker, checkUserByid, DeleteProduct);

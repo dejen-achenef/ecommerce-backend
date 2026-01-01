@@ -4,11 +4,14 @@ dotenv.config();
 import cors from "cors";
 import { v4 as uuidv4 } from "uuid";
 import pool from "./db.js";
+import cookieParser from "cookie-parser";
 import router from "./src/routes/routes.js";
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use(cookieParser());
+
 app.use("/", router);
 const id = uuidv4();
 console.log(id);

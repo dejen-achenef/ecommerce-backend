@@ -1,5 +1,8 @@
 import pool from "../../db.js";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
+import { validate as validateUUID } from "uuid";
+
 import {
   userInputValidation,
   LoginValidation,
@@ -7,24 +10,22 @@ import {
   UpdatePostValidation,
   PlaceOrderValidation,
 } from "../validator/inputValidator.js";
-import bcrypt from "bcrypt";
-import { validate as validateUUID } from "uuid";
+
+/**
+ * Helper function to remove password from user object
+ */
+const sanitizeUser = (user) => {
+  const { password, ...rest } = user;
+  return rest;
+};
+
+/**
+ * Create new user
+ */
 export const CreateUser = async (req, res) => {
-  // const { error, value } = userInputValidation.validate(req.body);
-
-  // if (error) {
-  //   return res.status(400).json({
-  //     success: false,
-  //     message: "Validation failed",
-  //     object: null,
-  //     errors: error.details.map((d) => d.message),
-  //   });
-  // }
-
   const { name, email, password, role } = req.body;
 
   try {
-    // Check if user already exists
     const existing = await pool.query(
       "SELECT id FROM users WHERE email = $1 OR name = $2",
       [email, name]
@@ -39,12 +40,10 @@ export const CreateUser = async (req, res) => {
       });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Insert new user
     const result = await pool.query(
-      "INSERT INTO users (name, email, password,role) VALUES ($1, $2, $3,$4) RETURNING *",
+      "INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING *",
       [name, email, hashedPassword, role]
     );
 
@@ -57,35 +56,26 @@ export const CreateUser = async (req, res) => {
       });
     }
 
-    const user = result.rows[0];
-    const { password: _, ...userWithoutPassword } = user;
-
     return res.status(201).json({
       success: true,
       message: "User created successfully",
-      object: userWithoutPassword,
+      object: sanitizeUser(result.rows[0]),
       errors: null,
     });
   } catch (err) {
     console.error("CreateUser error:", err);
-
-    if (err.code === "23505") {
-      return res.status(400).json({
-        success: false,
-        message: "Duplicate value",
-        object: null,
-        errors: [err.detail || "Unique constraint violation"],
-      });
-    }
-
     return res.status(500).json({
       success: false,
-      message: "Database error",
+      message: err.code === "23505" ? "Duplicate value" : "Database error",
       object: null,
-      errors: [err.message],
+      errors: [err.detail || err.message],
     });
   }
 };
+
+/**
+ * Login user and generate tokens
+ */
 export const LoginUser = async (req, res) => {
   try {
     const { error, value } = LoginValidation.validate(req.body);
@@ -101,13 +91,12 @@ export const LoginUser = async (req, res) => {
 
     const { name, email, password } = value;
 
-    // Find user by email or username
-    const gettinguser = await pool.query(
+    const userResult = await pool.query(
       "SELECT * FROM users WHERE email = $1 OR name = $2",
       [email, name]
     );
 
-    if (gettinguser.rows.length === 0) {
+    if (userResult.rows.length === 0) {
       return res.status(401).json({
         success: false,
         message: "User not found",
@@ -116,9 +105,7 @@ export const LoginUser = async (req, res) => {
       });
     }
 
-    const user = gettinguser.rows[0];
-
-    // Compare password FIRST
+    const user = userResult.rows[0];
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
@@ -130,35 +117,26 @@ export const LoginUser = async (req, res) => {
       });
     }
 
-    // Now generate tokens
     const accesstoken = jwt.sign(
       { id: user.id, role: user.role },
       process.env.accesskey,
-      {
-        expiresIn: "1h",
-      }
+      { expiresIn: "1h" }
     );
 
     const refreshtoken = jwt.sign(
       { id: user.id, role: user.role },
       process.env.refreshkey,
-      {
-        expiresIn: "1d",
-      }
+      { expiresIn: "1d" }
     );
 
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
-
-    // Set cookies (HTTP-only)
     res.cookie("accesstoken", accesstoken, {
       httpOnly: true,
-      secure: false, // change to true when using HTTPS
+      secure: false,
       sameSite: "lax",
-      maxAge: 3600000, // 1 hour
+      maxAge: 3600000,
     });
 
-    res.cookie("refresh_token", refreshtoken, {
+    res.cookie("refreshtoken", refreshtoken, {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
@@ -168,14 +146,11 @@ export const LoginUser = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "User signed in successfully",
-      object: userWithoutPassword,
-      token: token,
-      refreshToken: refreshtoken,
+      object: sanitizeUser(user),
       errors: null,
     });
   } catch (err) {
     console.error("LoginUser error:", err);
-
     return res.status(500).json({
       success: false,
       message: "Database error",
@@ -185,13 +160,16 @@ export const LoginUser = async (req, res) => {
   }
 };
 
-export const addpost = async (req, res) => {
+/**
+ * Add product
+ */
+export const addPost = async (req, res) => {
   const { error, value } = addPostValidation.validate(req.body);
 
   if (error) {
     return res.status(400).json({
       success: false,
-      message: "Please put the correct value",
+      message: "Validation failed",
       object: null,
       errors: error.details.map((d) => d.message),
     });
@@ -201,7 +179,7 @@ export const addpost = async (req, res) => {
 
   try {
     const result = await pool.query(
-      "INSERT INTO products (name, description, price, stock,user_id) VALUES ($1, $2, $3, $4,$5) RETURNING *",
+      "INSERT INTO products (name, description, price, stock, user_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
       [name, description, price, stock, req.user.id]
     );
 
@@ -221,12 +199,15 @@ export const addpost = async (req, res) => {
     });
   }
 };
+
+/**
+ * Update product
+ */
 export const UpdatePost = async (req, res) => {
-  const { id } = req.params; // product id from URL
-  const { name, description, price, stock } = req.body; // fields from client
+  const { id } = req.params;
+  const { name, description, price, stock } = req.body;
 
   try {
-    // Only update the fields that exist
     const result = await pool.query(
       `
       UPDATE products
@@ -255,130 +236,17 @@ export const UpdatePost = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", errors: [err.message] });
-  }
-};
-
-export const getAllUser = async (req, res) => {
-  let page = parseInt(req.query.page) || 1;
-  let limit = parseInt(req.query.limit) || 10;
-
-  const offset = (page - 1) * limit;
-  try {
-    const products = await pool.query(
-      "SELECT * FROM products LIMIT $1 OFFSET $2 ",
-      [limit, offset]
-    );
-    console.log(products);
-    if (!products) {
-      return res
-        .status(400)
-        .json({ success: false, message: "products are not reachable" });
-    }
-
-    const Totalitems = await pool.query("SELECT COUNT(*) FROM products");
-    const totalitemscount = Totalitems.rows[0].count;
-    const totalPages = totalitemscount / limit;
-    console.log(Totalitems.rows);
-    return res.status(200).json({
-      success: true,
-      message: "Products returned",
-      page,
-      limit,
-      totalitemscount,
-
-      totalPages,
-      data: products.rows,
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      errors: [err.message],
     });
-  } catch (err) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", errors: [err.message] });
   }
 };
 
-export const searchUser = async (req, res) => {
-  let limit = 10;
-  let page = 1;
-  const offset = (page - 1) * limit;
-
-  try {
-    const search = req.query.search;
-
-    const products = search
-      ? await pool.query("SELECT * FROM products WHERE name ILIKE $1", [
-          `%${search}%`,
-        ])
-      : await pool.query("SELECT * FROM products LIMIT $1 OFFSET $2 ", [
-          limit,
-          offset,
-        ]);
-
-    console.log("rjidhgudfj ", products);
-    if (!products) {
-      return res
-        .status(400)
-        .json({ success: false, message: "products are not reachable" });
-    }
-
-    const Totalitems = await pool.query("SELECT COUNT(*) FROM products");
-    const totalitemscount = Totalitems.rows[0].count;
-
-    return res.status(200).json({
-      success: true,
-      message: "Products returned",
-
-      totalitemscount,
-
-      data: products.rows,
-    });
-  } catch (err) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", errors: [err.message] });
-  }
-};
-
-export const getPostIndividually = async (req, res) => {
-  let page = parseInt(req.query.page) || 1;
-  let limit = parseInt(req.query.limit) || 10;
-  let id = req.params.id;
-
-  const offset = (page - 1) * limit;
-  try {
-    const products = await pool.query(
-      "SELECT * FROM products WHERE id=$1 LIMIT $2 OFFSET $3",
-      [id, limit, offset]
-    );
-    console.log(products);
-    if (products.rows.length === 0) {
-      return res
-        .status(400)
-        .json({ success: false, message: "products not found" });
-    }
-
-    const Totalitems = await pool.query("SELECT COUNT(*) FROM products");
-    const totalitemscount = Totalitems.rows[0].count;
-    const totalPages = totalitemscount / limit;
-    console.log(Totalitems.rows);
-    return res.status(200).json({
-      success: true,
-      message: "Products returned",
-      page,
-      limit,
-      totalitemscount,
-
-      totalPages,
-      data: products.rows,
-    });
-  } catch (err) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", errors: [err.message] });
-  }
-};
+/**
+ * Delete product
+ */
 export const DeleteProduct = async (req, res) => {
   const { id } = req.params;
 
@@ -396,44 +264,141 @@ export const DeleteProduct = async (req, res) => {
       success: true,
       message: "Deleted successfully",
     });
-  } catch (error) {
+  } catch (err) {
     return res.status(500).json({
       success: false,
       message: "Server error",
-      errors: [error.message],
+      errors: [err.message],
     });
   }
 };
 
-export const PlaseOrder = async (req, res) => {
-  const { error, value } = PlaceOrderValidation.validate(req.body);
-  if (error) {
+/**
+ * Place an order
+ */
+export const PlaceOrder = async (req, res) => {
+  const { error, value: orderItems } = PlaceOrderValidation.validate(req.body);
+  if (error)
     return res.status(400).json({
       success: false,
       message: "Validation failed",
-      object: null,
       errors: error.details.map((d) => d.message),
     });
 
-    const { productitems } = req.body;
+  const userId = req.user.id;
+  const client = await pool.connect();
 
-    for (let item in productitems) {
-      const { productid, quantity } = item;
-    }
-    try {
-      const orderplace = pool.query(
-        "INSERT INTO order_products (product_id,quantity) VALUES ($1,$2) RETURNING *",
-        [productid, quantity]
+  try {
+    await client.query("BEGIN");
+
+    let totalPrice = 0;
+
+    // Validate stock and calculate total
+    for (const { productId, quantity } of orderItems) {
+      const productResult = await client.query(
+        "SELECT price, stock, name FROM products WHERE id = $1",
+        [productId]
       );
-      res.status(201).json({
-        success: true,
-        message: "Order Successfully Created",
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: "unExpected error happened",
-      });
+
+      if (productResult.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({
+          success: false,
+          message: `Product not found: ${productId}`,
+        });
+      }
+
+      const product = productResult.rows[0];
+      if (product.stock < quantity) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient stock for product: ${product.name}`,
+        });
+      }
+
+      totalPrice += product.price * quantity;
     }
+
+    // Insert main order
+    const orderResult = await client.query(
+      "INSERT INTO orders (user_id, status, total_price) VALUES ($1, $2, $3) RETURNING id",
+      [userId, "pending", totalPrice]
+    );
+
+    const orderId = orderResult.rows[0].id;
+
+    // Insert order items and reduce stock
+    for (const { productId, quantity } of orderItems) {
+      await client.query(
+        "INSERT INTO order_products (order_id, product_id, quantity) VALUES ($1, $2, $3)",
+        [orderId, productId, quantity]
+      );
+      await client.query(
+        "UPDATE products SET stock = stock - $1 WHERE id = $2",
+        [quantity, productId]
+      );
+    }
+
+    await client.query("COMMIT");
+
+    // Fetch full order details
+    const finalOrder = await client.query(
+      `SELECT 
+        o.id AS order_id,
+        o.status,
+        o.total_price,
+        op.product_id,
+        p.name AS product_name,
+        p.price AS product_price,
+        op.quantity
+       FROM orders o
+       JOIN order_products op ON op.order_id = o.id
+       JOIN products p ON p.id = op.product_id
+       WHERE o.id = $1`,
+      [orderId]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Order placed successfully",
+      order: finalOrder.rows,
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("PlaceOrder error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Unexpected server error",
+    });
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * Get user's orders
+ */
+export const getMyOrders = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      `SELECT id AS order_id, status, total_price
+       FROM orders
+       WHERE user_id = $1`,
+      [userId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      orders: result.rows,
+    });
+  } catch (err) {
+    console.error("getMyOrders error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching orders",
+    });
   }
 };

@@ -56,7 +56,7 @@ export const emailValidatorForMiddleware = Joi.object({
 export const PlaceOrderValidation = Joi.array()
   .items(
     Joi.object({
-      productid: Joi.string().required(),
+      productId: Joi.string().required(),
       quantity: Joi.number().min(1),
     }).unknown(true)
   )
