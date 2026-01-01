@@ -328,7 +328,7 @@ export const PlaceOrder = async (req, res) => {
 
     const orderId = orderResult.rows[0].id;
 
-    // Insert order items and reduce stock
+    // Insert order items and reduce stock becuawse of getting error while using order_products as table name
     for (const { productId, quantity } of orderItems) {
       await client.query(
         "INSERT INTO order_products (order_id, product_id, quantity) VALUES ($1, $2, $3)",
@@ -342,7 +342,7 @@ export const PlaceOrder = async (req, res) => {
 
     await client.query("COMMIT");
 
-    // Fetch full order details
+    // Fetch full order details for best pagination response
     const finalOrder = await client.query(
       `SELECT 
         o.id AS order_id,
