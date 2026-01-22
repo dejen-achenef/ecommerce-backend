@@ -4,12 +4,18 @@ import authRouter from "./auth.js";
 import productRouter from "./products.js";
 import categoryRouter from "./categories.js";
 import docsRouter from "./docs.js";
+import cartRouter from "./cart.js";
+import orderRouter from "./orders.js";
+import paymentRouter from "./payments.js";
 
 const router = express.Router();
 
 router.use("/auth", authRouter);
 router.use("/products", productRouter);
 router.use("/categories", categoryRouter);
+router.use("/cart", cartRouter);
+router.use("/orders", orderRouter);
+router.use("/payments", paymentRouter);
 router.use("/docs", docsRouter);
 router.use("/legacy", legacyRouter);
 

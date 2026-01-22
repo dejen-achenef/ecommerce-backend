@@ -32,6 +32,9 @@ app.use("/api", router);
 
 // 404 and error handling
 app.use(notFoundHandler);
+import { prismaErrorHandler } from "./src/middleware/prismaErrorHandler.js";
+...
+app.use(prismaErrorHandler);
 app.use(errorHandler);
 
 const server = app.listen(config.port, () => {
