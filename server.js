@@ -4,7 +4,7 @@ dotenv.config();
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
-import router from "./src/routes/routes.js";
+import router from "./src/routes/index.js";
 import { config } from "./src/config/index.js";
 import { requestId } from "./src/middleware/requestId.js";
 import { notFoundHandler, errorHandler } from "./src/middleware/errorHandler.js";
