@@ -2,7 +2,7 @@ import prisma from "../lib/prisma.js";
 
 export const productRepository = {
   list: async ({ skip, take, q, categorySlug, minPrice, maxPrice, sort }) => {
-    const where = {};
+    const where = { deletedAt: null };
     if (q) {
       where.OR = [
         { name: { contains: q, mode: "insensitive" } },
@@ -42,5 +42,6 @@ export const productRepository = {
   findBySlug: (slug) => prisma.product.findUnique({ where: { slug }, include: { images: true, category: true } }),
   create: (data) => prisma.product.create({ data }),
   update: (id, data) => prisma.product.update({ where: { id }, data }),
-  remove: (id) => prisma.product.delete({ where: { id } }),
+  remove: (id) => prisma.product.update({ where: { id }, data: { deletedAt: new Date(), active: false } }),
+  restore: (id) => prisma.product.update({ where: { id }, data: { deletedAt: null, active: true } }),
 };

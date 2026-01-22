@@ -23,4 +23,5 @@ export const catalogService = {
   createProduct: (data) => productRepository.create(data),
   updateProduct: (id, data) => productRepository.update(id, data),
   deleteProduct: (id) => productRepository.remove(id),
+  restoreProduct: (id) => productRepository.restore(id),
 };

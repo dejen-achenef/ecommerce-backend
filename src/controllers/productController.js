@@ -49,4 +49,10 @@ export const productController = {
       res.json({ success: true, message: "Product deleted" });
     } catch (e) { next(e); }
   },
+  restore: async (req, res, next) => {
+    try {
+      const updated = await catalogService.restoreProduct(req.params.id);
+      res.json({ success: true, message: "Product restored", object: updated });
+    } catch (e) { next(e); }
+  },
 };

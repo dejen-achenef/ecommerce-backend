@@ -25,6 +25,10 @@ app.use(
 );
 app.use(cookieParser());
 
+// Stripe webhook must use raw body and be registered before express.json() for that route
+import { paymentController } from "./src/controllers/paymentController.js";
+app.post("/api/payments/webhook", express.raw({ type: "application/json" }), paymentController.webhook);
+
 // Healthcheck
 app.get("/health", (req, res) => {
   res.json({ status: "ok", uptime: process.uptime(), version: "1.0" });

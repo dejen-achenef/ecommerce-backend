@@ -16,15 +16,21 @@ export const paymentController = {
   },
   webhook: async (req, res, next) => {
     try {
-      // Skeleton: Expect to verify signature with STRIPE_WEBHOOK_SECRET in real setup
-      const event = req.body; // In production, use raw body and signature verify
+      if (!stripe) return res.status(501).json({ success: false, message: "Stripe not configured" });
+      const sig = req.headers['stripe-signature'];
+      const secret = process.env.STRIPE_WEBHOOK_SECRET || (await import('../config/index.js')).config.stripe.webhookSecret;
+      let event;
+      try {
+        event = stripe.webhooks.constructEvent(req.body, sig, secret);
+      } catch (err) {
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+      }
       if (event.type === "payment_intent.succeeded") {
         const intent = event.data.object;
         await prisma.$transaction(async (tx) => {
           await tx.payment.update({ where: { intentId: intent.id }, data: { status: intent.status } });
           const payment = await tx.payment.findUnique({ where: { intentId: intent.id } });
           const order = await tx.order.findUnique({ where: { id: payment.orderId }, include: { items: true } });
-          // decrement inventory
           for (const it of order.items) {
             await tx.product.update({ where: { id: it.productId }, data: { stock: { decrement: it.quantity } } });
           }

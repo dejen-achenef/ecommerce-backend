@@ -14,5 +14,6 @@ router.get("/:slugOrId", productController.get);
 router.post("/", tokenChecker, AdminChecker, checkschemas(productCreateSchema), productController.create);
 router.patch("/:id", tokenChecker, AdminChecker, checkschemas(productUpdateSchema), productController.update);
 router.delete("/:id", tokenChecker, AdminChecker, productController.remove);
+router.post("/:id/restore", tokenChecker, AdminChecker, productController.restore);
 
 export default router;
