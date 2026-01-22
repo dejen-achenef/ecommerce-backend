@@ -1,37 +1,14 @@
-import pool from "../../db.js";
-import { emailValidatorForMiddleware } from "../validator/inputValidator.js";
+// Checks admin role from JWT-populated req.user
 export const AdminChecker = async (req, res, next) => {
-  // validate req.body
-  const { error, value } = emailValidatorForMiddleware.validate({
-    email: req.body.email,
-  });
-
-  if (error) {
-    return res.status(401).json({ message: error });
-  }
-
-  const { email } = value;
-
   try {
-    const userResult = await pool.query("SELECT * FROM users WHERE email=$1", [
-      email,
-    ]);
-
-    if (userResult.rows.length === 0) {
-      return res.status(403).json({ message: "User not found" });
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
-
-    const user = userResult.rows[0];
-
-    if (user.role !== "admin") {
-      return res.status(403).json({ message: "Unauthorized" });
+    if (req.user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Forbidden: admin only" });
     }
-
-    req.user = user;
-
-    next();
+    return next();
   } catch (err) {
-    console.error(err);
     return res.status(500).json({ message: "Server error" });
   }
 };
