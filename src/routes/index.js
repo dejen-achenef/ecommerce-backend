@@ -20,6 +20,9 @@ router.use("/addresses", (await import("./addresses.js")).default);
 router.use("/shipping-methods", (await import("./shippingMethods.js")).default);
 router.use("/admin", (await import("./admin.js")).default);
 router.use("/docs", docsRouter);
+router.use("/reviews", (await import("./reviews.js")).default);
+router.use("/wishlist", (await import("./wishlist.js")).default);
+router.use("/search", (await import("./search.js")).default);
 router.use("/legacy", legacyRouter);
 
 export default router;

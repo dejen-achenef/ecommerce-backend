@@ -6,7 +6,9 @@ import { loginSchema, registerSchema } from "../validator/authSchemas.js";
 const router = express.Router();
 
 router.post("/register", checkschemas(registerSchema), authController.register);
-router.post("/login", checkschemas(loginSchema), authController.login);
+import { loginRateLimiter } from "../middleware/rateLimit.js";
+...
+router.post("/login", loginRateLimiter, checkschemas(loginSchema), authController.login);
 router.post("/logout", authController.logout);
 router.post("/refresh", authController.refresh);
 

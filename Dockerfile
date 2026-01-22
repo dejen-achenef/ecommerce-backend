@@ -1,12 +1,12 @@
 FROM node:18-alpine
 
 # this is the woking directory which holds the  entire file and we get it by the first dot
-WORKDIR  /dejene
-COPY package.json /dejene
-RUN npm install
+FROM node:18-alpine
 
-#copiyng the current directory (local files)to the container
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci || npm i
 COPY . .
-EXPOSE 3000
-
+ENV NODE_ENV=production
+EXPOSE 5000
 CMD ["npm","start"]

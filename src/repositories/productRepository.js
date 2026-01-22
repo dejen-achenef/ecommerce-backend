@@ -34,6 +34,10 @@ export const productRepository = {
     ]);
     return { items, total };
   },
+  searchFTS: async (q, { skip, take }) => {
+    // Simple FTS using Postgres plainto_tsquery on name and description
+    return prisma.$queryRaw`SELECT p.* FROM "Product" p WHERE to_tsvector('english', coalesce(p.name,'') || ' ' || coalesce(p.description,'')) @@ plainto_tsquery('english', ${q}) OFFSET ${skip} LIMIT ${take}`;
+  },
   findById: (id) => prisma.product.findUnique({ where: { id }, include: { images: true, category: true } }),
   findBySlug: (slug) => prisma.product.findUnique({ where: { slug }, include: { images: true, category: true } }),
   create: (data) => prisma.product.create({ data }),

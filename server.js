@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import morgan from "morgan";
 
 import router from "./src/routes/index.js";
 import { config } from "./src/config/index.js";
@@ -14,6 +15,7 @@ const app = express();
 
 // Core middlewares
 app.use(requestId);
+app.use(morgan(':method :url :status - :response-time ms reqId=:req[id]'));
 app.use(express.json());
 app.use(
   cors({
