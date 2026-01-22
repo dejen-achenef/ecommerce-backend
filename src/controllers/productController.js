@@ -1,5 +1,6 @@
 import { catalogService } from "../services/catalogService.js";
 import { parsePagination } from "../utils/pagination.js";
+import { sendPaginatedResponse } from "../utils/response.js";
 
 export const productController = {
   list: async (req, res, next) => {
@@ -11,11 +12,11 @@ export const productController = {
         take,
         q,
         categorySlug: category,
-        minPrice: minPrice ? Number(minPrice) : undefined,
-        maxPrice: maxPrice ? Number(maxPrice) : undefined,
+        minPrice: typeof minPrice === "number" ? minPrice : undefined,
+        maxPrice: typeof maxPrice === "number" ? maxPrice : undefined,
         sort,
       });
-      res.json({ success: true, message: "Products", object: items, pageNumber: page, pageSize, totalSize: total });
+      sendPaginatedResponse(res, { success: true, message: "Products", object: items, pageNumber: page, pageSize, totalSize: total });
     } catch (e) { next(e); }
   },
   get: async (req, res, next) => {

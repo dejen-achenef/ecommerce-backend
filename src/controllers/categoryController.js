@@ -1,12 +1,13 @@
 import { catalogService } from "../services/catalogService.js";
 import { parsePagination } from "../utils/pagination.js";
+import { sendPaginatedResponse } from "../utils/response.js";
 
 export const categoryController = {
   list: async (req, res, next) => {
     try {
       const { skip, take, page, pageSize } = parsePagination(req.query);
       const { items, total } = await catalogService.listCategories({ skip, take });
-      res.json({ success: true, message: "Categories", object: items, pageNumber: page, pageSize, totalSize: total });
+      sendPaginatedResponse(res, { success: true, message: "Categories", object: items, pageNumber: page, pageSize, totalSize: total });
     } catch (e) { next(e); }
   },
   get: async (req, res, next) => {
