@@ -4,7 +4,8 @@ import { parsePagination } from "../utils/pagination.js";
 export const orderController = {
   createFromCart: async (req, res, next) => {
     try {
-      const order = await orderService.createOrderFromCart(req.user.id);
+      const { addressId, shippingMethodId, discountCode } = req.body || {};
+      const order = await orderService.createOrderFromCart(req.user.id, { addressId, shippingMethodId, discountCode });
       res.status(201).json({ success: true, message: "Order created", object: order });
     } catch (e) { next(e); }
   },

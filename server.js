@@ -8,6 +8,7 @@ import router from "./src/routes/index.js";
 import { config } from "./src/config/index.js";
 import { requestId } from "./src/middleware/requestId.js";
 import { notFoundHandler, errorHandler } from "./src/middleware/errorHandler.js";
+import { prismaErrorHandler } from "./src/middleware/prismaErrorHandler.js";
 
 const app = express();
 
@@ -32,8 +33,6 @@ app.use("/api", router);
 
 // 404 and error handling
 app.use(notFoundHandler);
-import { prismaErrorHandler } from "./src/middleware/prismaErrorHandler.js";
-...
 app.use(prismaErrorHandler);
 app.use(errorHandler);
 

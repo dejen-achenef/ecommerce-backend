@@ -119,3 +119,69 @@ model Payment {
 
   order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
+
+model Address {
+  id        String   @id @default(uuid())
+  userId    String
+  line1     String
+  line2     String?
+  city      String
+  state     String?
+  postal    String
+  country   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ShippingMethod {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  price     Decimal  @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Discount {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  description String?
+  type        String   // 'percent' or 'fixed'
+  amount      Decimal
+  active      Boolean  @default(true)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AppliedDiscount {
+  id         String   @id @default(uuid())
+  orderId    String   @unique
+  discountId String
+  amount     Decimal
+
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  discount   Discount @relation(fields: [discountId], references: [id])
+}
+
+// Extend Order to link shipping and address
+model Order {
+  id          String      @id @default(uuid())
+  userId      String
+  status      String      @default("pending")
+  total       Decimal     @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  items       OrderItem[]
+  payment     Payment?
+
+  shippingMethodId String?
+  shippingMethod   ShippingMethod? @relation(fields: [shippingMethodId], references: [id])
+  shippingCost     Decimal         @default(0)
+
+  addressId  String?
+  address    Address? @relation(fields: [addressId], references: [id])
+
+  appliedDiscount AppliedDiscount?
+}

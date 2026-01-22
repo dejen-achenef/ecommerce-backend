@@ -20,9 +20,16 @@ export const paymentController = {
       const event = req.body; // In production, use raw body and signature verify
       if (event.type === "payment_intent.succeeded") {
         const intent = event.data.object;
-        await prisma.payment.update({ where: { intentId: intent.id }, data: { status: intent.status } });
-        const payment = await prisma.payment.findUnique({ where: { intentId: intent.id } });
-        await prisma.order.update({ where: { id: payment.orderId }, data: { status: "paid" } });
+        await prisma.$transaction(async (tx) => {
+          await tx.payment.update({ where: { intentId: intent.id }, data: { status: intent.status } });
+          const payment = await tx.payment.findUnique({ where: { intentId: intent.id } });
+          const order = await tx.order.findUnique({ where: { id: payment.orderId }, include: { items: true } });
+          // decrement inventory
+          for (const it of order.items) {
+            await tx.product.update({ where: { id: it.productId }, data: { stock: { decrement: it.quantity } } });
+          }
+          await tx.order.update({ where: { id: payment.orderId }, data: { status: "paid" } });
+        });
       }
       res.json({ received: true });
     } catch (e) { next(e); }

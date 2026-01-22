@@ -16,6 +16,9 @@ router.use("/categories", categoryRouter);
 router.use("/cart", cartRouter);
 router.use("/orders", orderRouter);
 router.use("/payments", paymentRouter);
+router.use("/addresses", (await import("./addresses.js")).default);
+router.use("/shipping-methods", (await import("./shippingMethods.js")).default);
+router.use("/admin", (await import("./admin.js")).default);
 router.use("/docs", docsRouter);
 router.use("/legacy", legacyRouter);
 
