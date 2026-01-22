@@ -2,39 +2,52 @@ import express from "express";
 import dotenv from "dotenv";
 dotenv.config();
 import cors from "cors";
-import { v4 as uuidv4 } from "uuid";
-import pool from "./db.js";
 import cookieParser from "cookie-parser";
+
 import router from "./src/routes/routes.js";
+import { config } from "./src/config/index.js";
+import { requestId } from "./src/middleware/requestId.js";
+import { notFoundHandler, errorHandler } from "./src/middleware/errorHandler.js";
 
 const app = express();
+
+// Core middlewares
+app.use(requestId);
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
 app.use(cookieParser());
 
-app.use("/", router);
-const id = uuidv4();
-console.log(id);
-const sendResponse = (res, { success, message, object, errors = null }) => {
-  res.json({ success, message, object, errors });
-};
-const sendPaginatedResponse = (
-  res,
-  { success, message, object, pageNumber, pageSize, totalSize, errors = null }
-) => {
-  res.json({
-    success,
-    message,
-    object,
-    pageNumber,
-    pageSize,
-    totalSize,
-    errors,
-  });
-};
-
-console.log(sendResponse, sendPaginatedResponse);
-
-app.listen(process.env.PORT, (req, res) => {
-  console.log(`the server is running on port ${process.env.port}`);
+// Healthcheck
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", uptime: process.uptime(), version: "1.0" });
 });
+
+// API routes
+app.use("/api", router);
+
+// 404 and error handling
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+const server = app.listen(config.port, () => {
+  console.log(`server listening on port ${config.port}`);
+});
+
+// Graceful shutdown
+function shutdown(signal) {
+  console.log(`${signal} received. Shutting down...`);
+  server.close(() => {
+    console.log("HTTP server closed.");
+    process.exit(0);
+  });
+  // Force exit if not closed in time
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
